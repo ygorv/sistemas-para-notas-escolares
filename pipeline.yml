@@ -1,0 +1,40 @@
+name: Sistema de Notas - Pipeline (Windows)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  executar-pipeline:
+    runs-on: windows-latest
+
+    steps:
+      # 1️⃣ Clona o repositório
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      # 2️⃣ Configura o Python no Windows
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3️⃣ Instala dependências (se houver)
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path "requirements.txt") {
+            pip install -r requirements.txt
+          } else {
+            echo "Nenhum arquivo requirements.txt encontrado"
+          }
+
+      # 4️⃣ Executa o script principal
+      - name: Executar sistema de notas
+        run: python sistema_notas.py
+
+      # 5️⃣ Exibe mensagem final
+      - name: Concluir pipeline
+        run: echo "✅ Pipeline executada com sucesso no Windows!"
