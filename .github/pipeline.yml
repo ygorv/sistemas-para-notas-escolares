@@ -1,0 +1,84 @@
+name: Sistema de Notas - Pipeline (Windows)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sast:
+    name: Análise SAST
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
+          pip install bandit
+
+      - name: Executar análise SAST com Bandit
+        run: |
+          echo "🔍 Iniciando análise SAST..."
+          bandit -r . -f txt -o bandit-report.txt || true
+
+      - name: Exibir resultados do SAST
+        run: cat bandit-report.txt
+
+  dast:
+    name: Análise DAST
+    runs-on: ubuntu-latest
+    needs: sast  # Executa após o SAST
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar ambiente
+        run: |
+          python -m http.server 8000 &
+          sleep 5
+
+      - name: Executar DAST com OWASP ZAP
+        uses: zaproxy/action-baseline@v0.8.0
+        with:
+          target: 'http://localhost:8000'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+  executar-pipeline:
+    name: Executar Sistema de Notas
+    runs-on: windows-latest
+    needs: [sast, dast]
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path "requirements.txt") {
+            pip install -r requirements.txt
+          } else {
+            echo "Nenhum arquivo requirements.txt encontrado"
+          }
+      - name: Executar sistema de notas
+        run: python sistema_notas.py
+
+      - name: Concluir pipeline
+        run: echo " Pipeline executada com sucesso no Windows!"
